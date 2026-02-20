@@ -1,0 +1,49 @@
+// Update the API calls in the HTML
+async function startGeneration() {
+    const config = {
+        region: document.getElementById('region').value,
+        name_prefix: document.getElementById('name-prefix').value,
+        password_prefix: document.getElementById('password-prefix').value,
+        account_count: parseInt(document.getElementById('account-count').value),
+        thread_count: parseInt(document.getElementById('thread-count').value),
+        rarity_threshold: parseInt(document.getElementById('rarity-threshold').value),
+        auto_activation: document.getElementById('auto-activation').checked,
+        turbo_mode: document.getElementById('turbo-mode').checked
+    };
+
+    try {
+        const response = await fetch('/api/start', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(config)
+        });
+        const data = await response.json();
+        if (data.status === 'success') {
+            addLog('Generator started successfully', 'success');
+            startPolling();
+        }
+    } catch (error) {
+        addLog('Failed to start generator: ' + error, 'error');
+    }
+}
+
+// Poll for updates
+function startPolling() {
+    // Poll stats every second
+    setInterval(async () => {
+        const statsResponse = await fetch('/api/stats');
+        const stats = await statsResponse.json();
+        updateStats(stats);
+        
+        // Update progress bar
+        const progress = (stats.generated / stats.target) * 100;
+        document.getElementById('progressBar').style.width = `${progress}%`;
+    }, 1000);
+    
+    // Poll logs every 2 seconds
+    setInterval(async () => {
+        const logsResponse = await fetch('/api/logs');
+        const logs = await logsResponse.json();
+        logs.forEach(log => addLog(log.message, log.type));
+    }, 2000);
+}
